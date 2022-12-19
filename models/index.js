@@ -1,4 +1,4 @@
-const bookshelf = require('../bookshelf')
+const bookshelf = require('../bookshelf');
 
 const Poster = bookshelf.model('Poster', {
     tableName: 'posters',
@@ -23,4 +23,8 @@ const MediaProperty = bookshelf.model('MediaProperty', {
         return this.hasMany('Poster', 'mediaproperty_id');
     }
 })
-module.exports = { Poster, MediaProperty, Tag }; 
+
+const User = bookshelf.model('User', {
+    tableName: 'users'
+})
+module.exports = { Poster, MediaProperty, Tag, User }; 

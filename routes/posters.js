@@ -5,6 +5,7 @@ const { Poster, MediaProperty, Tag } = require('../models');
 
 const { bootstrapField, createPosterForm } = require('../forms');
 
+const { checkIfAuthenticated } = require('../middlewares');
 router.get('/', async (req, res) => {
     let posters = await Poster.collection().fetch({
         withRelated: ['mediaproperty'],
@@ -16,7 +17,7 @@ router.get('/', async (req, res) => {
     })
 })
 
-router.get('/create', async (req, res) => {
+router.get('/create', checkIfAuthenticated, async (req, res) => {
     const allMediaProperties = await MediaProperty.fetchAll().map((mediaproperty) => {
         return [mediaproperty.get("id"), mediaproperty.get('description')]
     })
@@ -27,9 +28,16 @@ router.get('/create', async (req, res) => {
     res.render('posters/create', {
         'form': posterForm.toHTML(bootstrapField)
     })
+
+    res.render('posters/create', {
+        'form': posterForm.toHTML(bootstrapField),
+        cloudinaryName: process.env.CLOUDINARY_NAME,
+        cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+        cloudinaryPreset: process.env.CLOUDINARY_UPLOAD_PRESET
+    })
 })
 
-router.post('/create', async (req, res) => {
+router.post('/create', checkIfAuthenticated, async (req, res) => {
     console.log(req)
     const allMediaProperties = await MediaProperty.fetchAll().map((mediaproperty) => {
         return [mediaproperty.get('id'), mediaproperty.get('description')];
@@ -50,6 +58,7 @@ router.post('/create', async (req, res) => {
             if (tags) {
                 await poster.tags().attach(tags.split(","));
             }
+            req.flash("success_messages", `New Poster ${poster.get('title')} has been created`)
             res.redirect('/posters');
         },
         'error': async (form) => {

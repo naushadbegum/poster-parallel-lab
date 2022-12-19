@@ -1,5 +1,5 @@
 // import in caolan forms
-const forms = require("forms");
+const forms = require('forms');
 // create some shortcuts
 const fields = forms.fields;
 const validators = forms.validators;
@@ -95,8 +95,65 @@ const createPosterForm = (allMediaProperties = [], allTags = []) => {
             errorAfterField: true,
             widget: widgets.multipleSelect(),
             choices: allTags
+        }),
+        'image_url': fields.string({
+            widget:widgets.hidden()
         })
     })
 };
 
-module.exports = { createPosterForm, bootstrapField};
+const createRegistrationForm = () => {
+    return forms.create({
+        'username': fields.string({
+            required: true,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            }
+        }),
+        'email': fields.string({
+            required: true,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            }
+        }),
+        'password': fields.password({
+            required: true,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            }
+        }),
+        'confirm_password': fields.password({
+            required: true,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            },
+            validators: [validators.matchField('password')]
+        })
+    })
+};
+
+const createLoginForm = () => {
+    return forms.create({
+        'email': fields.string({
+            required: true,
+            errorAfterFiled: true,
+            cssClasses: {
+                label: ['form-label']
+            }
+        }),
+        'password': fields.password({
+            required: true,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            }
+        }),
+    })
+};
+
+
+module.exports = { createPosterForm, createRegistrationForm,createLoginForm, bootstrapField};

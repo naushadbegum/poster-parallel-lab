@@ -5,7 +5,7 @@ const knex = require('knex') ({
         password: 'bar',
         database: 'poster_shop'
     }
-})
-const bookshelf = require('bookshelf')(knex)
+});
+const bookshelf = require('bookshelf')(knex);
 
 module.exports = bookshelf;
