@@ -1,7 +1,10 @@
 {{#extends 'base'}}
 
 {{#block 'content'}}
-
+<form method="GET">
+    {{{form}}}
+    <input type="submit" class="mb-3 mt-3 btn btn-primary" value="Search"/>
+</form>
 <table class="table">
     <thead>
         <tr>
@@ -28,10 +31,12 @@
                 {{this.title}}
             </td>
             <td>
-                {{this.mediaproperty_id}}
+                {{this.media_property.description}}
             </td>
             <td>
-                {{this.tags.name}}
+                {{#each this.tags}}
+                <span class="badge bg-primary">{{this.name}}</span>
+                {{/each}}
             </td>
             <td>
                 {{this.cost}}

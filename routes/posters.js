@@ -3,26 +3,84 @@ const router = express.Router();
 
 const { Poster, MediaProperty, Tag } = require('../models');
 
-const { bootstrapField, createPosterForm } = require('../forms');
+const { bootstrapField, createPosterForm, createSearchForm } = require('../forms');
 
 const { checkIfAuthenticated } = require('../middlewares');
+
+const dataLayer = require('../dal/posters')
+
+// router.get('/', async (req, res) => {
+//     let posters = await Poster.collection().fetch({
+//         withRelated: ['media_property', 'tags'],
+//     });
+//     console.log(posters.toJSON());
+//     res.render('posters/index', {
+//         'posters': posters.toJSON()
+//     })
+// })
+
 router.get('/', async (req, res) => {
-    let posters = await Poster.collection().fetch({
-        withRelated: ['mediaproperty'],
-        withRelated: ['tags']
-    });
-    console.log(posters.toJSON());
-    res.render('posters/index', {
-        'posters': posters.toJSON()
+    const allMediaProperties = await dataLayer.getMediaProperties();
+    allMediaProperties.unshift([0, '----']);
+
+    const allTags = await Tag.fetchAll().map(tag => [tag.get('id'), tag.get('name')]);
+
+    let searchForm = createSearchForm(allMediaProperties, allTags);
+    let q = Poster.collection();
+
+    searchForm.handle(req, {
+        'empty': async (form) => {
+            let posters = await q.fetch({
+                withRelated: ['tags']
+            })
+            res.render('posters/index', {
+                'posters': posters.toJSON(),
+                'form': form.toHTML(bootstrapField)
+            })
+        },
+        'error': async (form) => {
+            let posters = await q.fetch({
+                withRelated: ['tags']
+            })
+            res.render('posters/index', {
+                'posters': posters.toJSON(),
+                'form': form.toHTML(bootstrapField)
+            })
+        },
+        'success': async (form) => {
+            if (form.data.title) {
+                q.where('title', 'like', '%' + form.data.title + '%')
+            }
+            if (form.data.media_property_id && form.data.media_property_id != "0") {
+                q.where('mediaproperty_id', '=', form.data.mediaproperty_id)
+            }
+            if (form.data.min_cost) {
+                q.where('cost', '>=', form.data.min_cost)
+            }
+            if (form.data.max_cost) {
+                q.where('cost', '<=', form.data.max_cost);
+            }
+            if (form.data.tags) {
+                q.query('join', 'poster_tags', 'posters.id', 'poster_id').where('tag_id', 'in', form.data.tags.split(','))
+            }
+
+            let posters = await q.fetch({
+                withRelated: ['media_property', 'tags']
+            })
+            console.log(posters.toJSON());
+            res.render('posters/index', {
+                'posters': posters.toJSON(),
+                'form': form.toHTML(bootstrapField)
+            })
+        }
     })
 })
 
-router.get('/create', checkIfAuthenticated, async (req, res) => {
-    const allMediaProperties = await MediaProperty.fetchAll().map((mediaproperty) => {
-        return [mediaproperty.get("id"), mediaproperty.get('description')]
-    })
 
-    const allTags = await Tag.fetchAll().map( tag => [tag.get('id'), tag.get('name')]);
+router.get('/create', checkIfAuthenticated, async (req, res) => {
+    const allMediaProperties = await dataLayer.getMediaProperties();
+
+    const allTags = await Tag.fetchAll().map(tag => [tag.get('id'), tag.get('name')]);
 
     const posterForm = createPosterForm(allMediaProperties, allTags);
     res.render('posters/create', {
@@ -39,13 +97,11 @@ router.get('/create', checkIfAuthenticated, async (req, res) => {
 
 router.post('/create', checkIfAuthenticated, async (req, res) => {
     console.log(req)
-    const allMediaProperties = await MediaProperty.fetchAll().map((mediaproperty) => {
-        return [mediaproperty.get('id'), mediaproperty.get('description')];
-    })
+    const allMediaProperties = await dataLayer.getMediaProperties();
     const posterForm = createPosterForm(allMediaProperties);
     posterForm.handle(req, {
         'success': async (form) => {
-            let {tags,...posterData} = form.data;
+            let { tags, ...posterData } = form.data;
             const poster = new Poster(posterData);
             // poster.set('title', form.data.title);
             // poster.set('cost', form.data.cost);
@@ -78,7 +134,7 @@ router.get('/:poster_id/update', async (req, res) => {
         withRelated: ['tags']
     });
 
-    const allTags = await Tag.fetchAll().map( tag => [tag.get('id'), tag.get('name')]);
+    const allTags = await Tag.fetchAll().map(tag => [tag.get('id'), tag.get('name')]);
     const allMediaProperties = await MediaProperty.fetchAll().map((mediaproperty) => {
         return [mediaproperty.get('id'), mediaproperty.get('description')];
     })
@@ -93,12 +149,18 @@ router.get('/:poster_id/update', async (req, res) => {
     posterForm.fields.width.value = poster.get('width');
     posterForm.fields.width.value = poster.get('mediaproperty_id');
 
+    posterForm.fields.image_url.value = poster.get('image_url');
+
     let selectedTags = await poster.related('tags').pluck('id');
     posterForm.fields.tags.value = selectedTags;
 
     res.render('posters/update', {
         'form': posterForm.toHTML(bootstrapField),
-        'poster': poster.toJSON()
+        'poster': poster.toJSON(),
+
+        cloudinaryName: process.env.CLOUDINARY_NAME,
+        cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+        cloudinaryPreset: process.env.CLOUDINARY_UPLOAD_PRESET
     })
 });
 
@@ -118,18 +180,18 @@ router.post('/:poster_id/update', async (req, res) => {
     const posterForm = createPosterForm(allMediaProperties);
     posterForm.handle(req, {
         'success': async (form) => {
-            let { tags, ...posterData} = form.data;
+            let { tags, ...posterData } = form.data;
             poster.set(posterData);
             poster.save();
 
             let tagIds = tags.split(',');
             let existingTagIds = await poster.related('tags').pluck('id');
 
-            let toRemove = existingTagIds.filter( id => tagIds.includes(id) === false);
+            let toRemove = existingTagIds.filter(id => tagIds.includes(id) === false);
             await poster.tags().detach(toRemove);
 
             await poster.tags().attach(tagIds);
-            
+
             res.redirect('/posters');
         },
         'error': async (form) => {

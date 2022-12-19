@@ -155,5 +155,52 @@ const createLoginForm = () => {
     })
 };
 
+const createSearchForm = (media_properties, tags) => {
+    return forms.create({
+        'title': fields.string({
+            required: false,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            }
+        }),
+        'min_cost': fields.string({
+            required: false,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            },
+            'validators': [validators.integer()]
+        }),
+        'max_cost': fields.string({
+            required: false,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            },
+            'validators': [validators.integer()]
+        }),
+        'mediaproperty_id':fields.string({
+            label: 'Media Property',
+            required: false,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            },
+            widget: widgets.select(),
+            choices: media_properties
+        }),
+        'tags': fields.string({
+            required: false,
+            errorAfterField: true,
+            cssClasses: {
+                label: ['form-label']
+            },
+            widget: widgets.multipleSelect(),
+            choices: tags
+        }),
+    })
+}
 
-module.exports = { createPosterForm, createRegistrationForm,createLoginForm, bootstrapField};
+
+module.exports = { createPosterForm, createRegistrationForm,createLoginForm,createSearchForm, bootstrapField};
